@@ -76,7 +76,7 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
     const xlprompt = mode;
     xlprompt["2"]["inputs"]["text_g"] = prompt;
     xlprompt["2"]["inputs"]["text_l"] = prompt;
-    xlprompt["69"]["inputs"]["seed"] = seed;
+    xlprompt["84"]["inputs"]["seed"] = seed;
     xlprompt["41"]["inputs"]["width"] = width;
     xlprompt["41"]["inputs"]["height"] = height;
 
@@ -387,7 +387,7 @@ function downloadImage(link, callback) {
         response.on('data', (chunk) => chunks.push(chunk));
         response.on('end', () => {
             const buffer = Buffer.concat(chunks);
-            const filePath = `/Users/alexg/ComfyUI/output/discord/${Date.now()}.jpg`; // Adjust the path and extension as needed
+            const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
             fs.writeFile(filePath, buffer, (err) => {
                 if (err) {
                     console.error('Error saving the image:', err);
@@ -588,7 +588,7 @@ async function main() {
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
                     const prompt_text = img2img;
 
-                    prompt_text["45"]["inputs"]["image"] = '/Users/alexg/ComfyUI/output/discord/' + buttonInfo[3];
+                    prompt_text["45"]["inputs"]["image"] = process.env.IMAGE_PATH + buttonInfo[3];
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else if (buttonInfo[1].startsWith("C")) {
@@ -622,7 +622,7 @@ async function main() {
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
                     const prompt_text = highresfix;
 
-                    prompt_text["45"]["inputs"]["image"] = '/Users/alexg/ComfyUI/output/discord/' + buttonInfo[3];
+                    prompt_text["45"]["inputs"]["image"] = process.env.IMAGE_PATH + buttonInfo[3];
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else {
