@@ -34,8 +34,6 @@ This BOT uses [ChatGPT API](https://github.com/transitive-bullshit/chatgpt-api) 
 
 - `/dream` - image prompt.
 - `/help` - Get Help.
-
-
 - `/ping` - Check Websocket Heartbeat && Roundtrip Latency.
 
 
@@ -170,11 +168,19 @@ npm run prod
 
 9. **Important:** Rename the downloaded json file to `firebaseServiceAccountKey.json` <br> Any other name will not work here. Then put the json file in your bots directory. <br>Copy FileName:
 ```bash
-firebaseServiceAccountKey.json  <-- You need to base64 this and put it into the .env file now
+firebaseServiceAccountKey.json  <-- You need to base64 this and put it into the .env file for now, I'll switch it back to using the json before the release
 ```
 
-
 > ✨ Tip: check out these images [here](https://github.com/cryptaralex/dreamshaper/tree/main/img)
+
+### • ComfyUI Setup:
+
+1. Follow the instructions on the ComfyUI github [here](https://github.com/comfyanonymous/ComfyUI)
+2. Install the ComfyUI manager from [here](https://github.com/ltdrdata/ComfyUI-Manager)
+3. Open the included image in your ComfyUI and use the manager to install all the missing nodes.
+4. Place necessary checkpoints, lora, and upscalers in the appropriate directory. Todo: More details on this.
+5. Make sure you can generate images using the provided node graph.
+5. Edit the .env file with your installation location output path.
 
 
 ## 💬 Support:
