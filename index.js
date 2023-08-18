@@ -303,7 +303,7 @@ const firebaseServiceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVI
 const activity = '/dream or /help'
 
 const commands = [{
-        name: "imagine",
+        name: "dream",
         description: "Generate an image",
         dm_permission: false,
         options: [{
@@ -626,7 +626,7 @@ async function main() {
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else {
-                    imagine_Interaction_Handler(interaction);
+                    dream_Interaction_Handler(interaction);
 
                 }
 
@@ -640,8 +640,8 @@ async function main() {
         });
         if (!interaction.isChatInputCommand()) return;
         switch (interaction.commandName) {
-            case "imagine":
-                imagine_Interaction_Handler(interaction);
+            case "dream":
+                dream_Interaction_Handler(interaction);
                 break;
             case "ping":
                 ping_Interaction_Handler(interaction);
@@ -656,7 +656,7 @@ async function main() {
         }
     });
 
-    async function imagine_Interaction_Handler(interaction) {
+    async function dream_Interaction_Handler(interaction) {
 
         let question, height, width;
         let seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
