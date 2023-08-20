@@ -14,8 +14,8 @@
       "crop_h": 0,
       "target_width": 4096,
       "target_height": 4096,
-      "text_g": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), nsfw, naked, nipples, 18 yo girl, beautiful big sharp eyes, bright silver eyes, eyelashes, sensual lips, light freckles, very short blonde hair, highly detailed skin texture, fashion icon, simple 1color background, studio lighting, fill light, intense shadow, film grain, best shot, face focus, symmetric face, cowboy shot angle, looking at viewer, lip bite, thigh gap, hard nipples, small breasts, shaved undercut, redhead, beautiful face, beautiful lighting, blue eyes, the most beautiful in the world,full length frame, High detail RAW color art, diffused soft lighting, shallow depth of field, sharp focus, hyperrealism, cinematic lighting,smiling, ((neons, skin)), bend over forward agains wall",
-      "text_l": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), nsfw, naked, nipples, 18 yo girl, beautiful big sharp eyes, bright silver eyes, eyelashes, sensual lips, light freckles, very short blonde hair, highly detailed skin texture, fashion icon, simple 1color background, studio lighting, fill light, intense shadow, film grain, best shot, face focus, symmetric face, cowboy shot angle, looking at viewer, lip bite, thigh gap, hard nipples, small breasts, shaved undercut, redhead, beautiful face, beautiful lighting, blue eyes, the most beautiful in the world,full length frame, High detail RAW color art, diffused soft lighting, shallow depth of field, sharp focus, hyperrealism, cinematic lighting,smiling, ((neons, skin)), bend over forward agains wall",
+      "text_g": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), an astronaut riding a horse on the moon",
+      "text_l": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), an astronaut riding a horse on the moon",
       "clip": [
         "25",
         1
@@ -31,7 +31,7 @@
         0
       ],
       "steps": 40,
-      "cfg": 5,
+      "cfg": 7.5,
       "sampler_name": "dpmpp_2m_sde_gpu",
       "scheduler": "karras",
       "start_at_step": 0,
@@ -83,7 +83,7 @@
   "25": {
     "inputs": {
       "lora_name": "sd_xl_offset_example-lora_1.0.safetensors",
-      "strength_model": 0.75,
+      "strength_model": 0.5,
       "strength_clip": 1,
       "model": [
         "37",
@@ -136,7 +136,7 @@
   },
   "45": {
     "inputs": {
-      "image": "discord/sdxl_0036.png [output]",
+      "image": "discord/sdxl_0935.png [output]",
       "choose file to upload": "image"
     },
     "class_type": "LoadImage"
@@ -180,7 +180,7 @@
       "embed_workflow": "true",
       "show_previews": "true",
       "images": [
-        "28",
+        "86",
         0
       ]
     },
@@ -289,9 +289,20 @@
   },
   "84": {
     "inputs": {
-      "seed": 73495631395443
+      "seed": 965471185346926
     },
     "class_type": "Seed (Legacy)"
+  },
+  "86": {
+    "inputs": {
+      "gap": 0,
+      "max_columns": 2,
+      "images": [
+        "28",
+        0
+      ]
+    },
+    "class_type": "ImagesGridByColumns"
   }
 };  
         export default img2img;

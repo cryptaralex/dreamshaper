@@ -44,6 +44,7 @@
     "protobufjs": "^7.2.4",
     "replicate": "^0.12.3",
     "semver": "^7.5.4",
+    "sharp": "^0.32.5",
     "tnl-midjourney-api": "^1.0.3",
     "word-wrap": "^1.2.3"
   }

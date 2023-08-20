@@ -113,8 +113,8 @@ const highresfix =
     "inputs": {
       "switch": "On",
       "lora_name": "topless v1a_fro0.95.safetensors",
-      "strength_model": 1,
-      "strength_clip": 1,
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
       "model": [
         "1",
         0
@@ -167,7 +167,7 @@ const highresfix =
   "58": {
     "inputs": {
       "output_path": "discord",
-      "filename_prefix": "sdxl",
+      "filename_prefix": "sdxl_hires",
       "filename_delimiter": "_",
       "filename_number_padding": 4,
       "filename_number_start": "false",

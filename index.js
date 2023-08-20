@@ -16,6 +16,7 @@ import Keyv from 'keyv';
 import KeyvFirestore from 'keyv-firestore';
 import fs from 'fs';
 import https from 'https';
+import sharp from 'sharp';
 
 import txt2img from './txt2img.js';
 import img2img from './img2img.js';
@@ -57,6 +58,54 @@ const processNextInQueue = async () => {
     processNextInQueue();
 };
 
+
+/**
+ * Extracts a quadrant from an image buffer.
+ * @param {Buffer} imageBuffer - The source image buffer.
+ * @param {number} quadrant - The quadrant to extract (0-3).
+ * @return {Promise<Buffer>} - A promise that resolves with the quadrant image buffer.
+ */
+
+const extractQuadrant = async (imageBuffer, quadrant) => {
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+
+
+    const quadrantWidth = Math.round(metadata.width / 2);
+    const quadrantHeight = Math.round(metadata.height / 2);
+
+
+    let xOffset = 0;
+    let yOffset = 0;
+
+
+    switch (quadrant) {
+        case 0:
+            xOffset = 0;
+            yOffset = 0;
+            break;
+        case 1:
+            xOffset = quadrantWidth;
+            yOffset = 0;
+            break;
+        case 2:
+            xOffset = 0;
+            yOffset = quadrantHeight;
+            break;
+        case 3:
+            xOffset = quadrantWidth;
+            yOffset = quadrantHeight;
+            break;
+        default:
+            throw new Error('Invalid quadrant number. Expected 0-3.');
+    }
+
+
+    return await image
+        .extract({ left: xOffset, top: yOffset, width: quadrantWidth, height: quadrantHeight })
+        .toBuffer();
+}
+
 const queueImageGeneration = (mode, prompt, seed, width, height, interaction, question, db) => {
     imageGenerationQueue.push({
         mode,
@@ -74,11 +123,13 @@ const queueImageGeneration = (mode, prompt, seed, width, height, interaction, qu
 const generateImage = async (mode, prompt, seed, width, height, interaction, question, db) => {
    
     const xlprompt = mode;
+   // console.log(mode);
     xlprompt["2"]["inputs"]["text_g"] = prompt;
     xlprompt["2"]["inputs"]["text_l"] = prompt;
     xlprompt["84"]["inputs"]["seed"] = seed;
     xlprompt["41"]["inputs"]["width"] = width;
     xlprompt["41"]["inputs"]["height"] = height;
+
 
     const ws = new WebSocket(`ws://${server_address}/ws?clientId=${client_id}`);
 
@@ -89,20 +140,21 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                 const images = imagesData['58'];
                 const buffers = images.map(image => image.data);
                 const filenames = images.map(image => image.filename);
-                if (buffers.length === 1) {
+                if(xlprompt["58"]["inputs"]["filename_prefix"]== "sdxl_hires") {
                     const row1 = new ActionRowBuilder().addComponents([
                         createButtonComponent(
                             "🪄 Variations",
-                            `${interaction.id}#V1#SDXL#${filenames[0]}`
+                            `4#V4#${filenames[0]}#SDXL#${interaction.id}`
+                           
                         ),
-                        createButtonComponent(
-                            "🪄 Hires Fix",
-                            `${interaction.id}#H1#SDXL#${filenames[0]}`
-                        ),
-                        createButtonComponent(
-                            "📷",
-                            `${interaction.id}#C1#SDXL#${filenames[0]}`
-                        )
+                       // createButtonComponent(
+                        //    "🪄 Hires Fix",
+                      //      `${interaction.id}#H1#SDXL#${filenames[0]}`
+                     //   ),
+                       // createButtonComponent(
+                      //      "📷",
+                       //     `${interaction.id}#C1#SDXL#${filenames[0]}`
+                       // )
                     ]);
 
                     await interaction.editReply({
@@ -123,15 +175,15 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                         ),
                         createButtonComponent(
                             "U2",
-                            `1#U2#${filenames[1]}#SDXL#${interaction.id}`
+                            `1#U2#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "U3",
-                            `2#U3#${filenames[2]}#SDXL#${interaction.id}`
+                            `2#U3#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "U4",
-                            `3#U4#${filenames[3]}#SDXL#${interaction.id}`
+                            `3#U4#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "🔄",
@@ -142,24 +194,24 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                     const row2 = new ActionRowBuilder().addComponents([
                         createButtonComponent(
                             "V1",
-                            `${interaction.id}#V1#SDXL#${filenames[0]}`
+                            `0#V1#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "V2",
-                            `${interaction.id}#V2#SDXL#${filenames[1]}`
+                            `1#V2#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "V3",
-                            `${interaction.id}#V3#SDXL#${filenames[2]}`
+                            `2#V3#${filenames[0]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "V4",
-                            `${interaction.id}#V4#SDXL#${filenames[3]}`
+                            `3#V4#${filenames[0]}#SDXL#${interaction.id}`
                         ),
-                        createButtonComponent(
-                            "📷",
-                            `${interaction.id}#C1#SDXL`
-                        )
+                       // createButtonComponent(
+                        //    "📷",
+                        //    `${interaction.id}#C1#SDXL`
+                       // )
                     ]);
 
                     await interaction.editReply({
@@ -169,22 +221,7 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                                 name: filenames[0],
                                 contentType: 'image/png',
                             },
-                            {
-                                attachment: buffers[1],
-                                name: filenames[1],
-                                contentType: 'image/png',
-                            },
-                            {
-                                attachment: buffers[2],
-                                name: filenames[2],
-                                contentType: 'image/png',
-                            },
-                            {
-                                attachment: buffers[3],
-                                name: filenames[3],
-                                contentType: 'image/png',
-                            }
-
+                          
                         ],
                         components: [row1, row2]
                     });
@@ -527,28 +564,29 @@ async function main() {
                     await interaction.reply(`Upscaling...🤔`);
                     const index = buttonInfo[0];
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
-                    const buffer = await loadImageToBuffer(attachmentsArray[index].attachment);
+                    const buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
+                    const extracted = await extractQuadrant(buffer, parseInt(buttonInfo[0]));
 
                     const row1 = new ActionRowBuilder().addComponents([
                         createButtonComponent(
                             "🪄 Variations",
-                            `${interaction.id}#V1#SDXL#${buttonInfo[2]}`
+                            `4#V4#${buttonInfo[2]}#SDXL#${interaction.id}`
                         ),
                         createButtonComponent(
                             "🪄 Hires Fix",
                             `${interaction.id}#H1#SDXL#${buttonInfo[2]}`
                         ),
-                        createButtonComponent(
-                            "📷",
-                            `${interaction.id}#C1#SDXL#${buttonInfo[2]}`
-                        )
+                   //     createButtonComponent(
+                   //         "📷",
+                  //          `${interaction.id}#C1#SDXL#${buttonInfo[2]}`
+                   //     )
 
                     ]);
 
                     await interaction.editReply({
                         content: `${interaction.message.content} (Upscaled) <@${interaction.user.id}>\n`,
                         files: [{
-                            attachment: buffer,
+                            attachment: extracted,
                             name: buttonInfo[2],
                             contentType: 'image/png',
                         }],
@@ -578,7 +616,7 @@ async function main() {
                         `${progress}% ${progressBar} <@${interaction.user.id}>`
                     );
 
-                    const doc = await db.collection('prompt-history').doc(buttonInfo[0]).get();
+                    const doc = await db.collection('prompt-history').doc(buttonInfo[4]).get();
 
                     const prompt = doc.data().prompt;
                     const question = doc.data().question;
@@ -587,8 +625,23 @@ async function main() {
                     console.log(prompt);
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
                     const prompt_text = img2img;
+ // extract the image and save it first
+                    const attachmentsArray = Array.from(interaction.message.attachments.values());
+                    var buffer = {};
+                    buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
+                    if(parseInt(buttonInfo[0]) < 4){
+                      buffer = await extractQuadrant(buffer, parseInt(buttonInfo[0]));
+                    }
 
-                    prompt_text["45"]["inputs"]["image"] = process.env.IMAGE_PATH + buttonInfo[3];
+                    const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
+                    fs.writeFile(filePath, buffer, (err) => {
+                        if (err) {
+                            console.error('Error saving the image:', err);
+                           
+                        } 
+                    });
+
+                    prompt_text["45"]["inputs"]["image"] = filePath;
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else if (buttonInfo[1].startsWith("C")) {
@@ -621,8 +674,18 @@ async function main() {
 
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
                     const prompt_text = highresfix;
+                    const attachmentsArray = Array.from(interaction.message.attachments.values());
+                    var buffer = {};
+                    buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
+                    const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
+                    fs.writeFile(filePath, buffer, (err) => {
+                        if (err) {
+                            console.error('Error saving the image:', err);
+                           
+                        } 
+                    });
 
-                    prompt_text["45"]["inputs"]["image"] = process.env.IMAGE_PATH + buttonInfo[3];
+                    prompt_text["45"]["inputs"]["image"] = filePath;
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else {
