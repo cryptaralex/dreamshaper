@@ -14,8 +14,8 @@ const highresfix =
       "crop_h": 0,
       "target_width": 4096,
       "target_height": 4096,
-      "text_g": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), nsfw, naked, nipples, 18 yo girl, beautiful big sharp eyes, bright silver eyes, eyelashes, sensual lips, light freckles, very short blonde hair, highly detailed skin texture, fashion icon, simple 1color background, studio lighting, fill light, intense shadow, film grain, best shot, face focus, symmetric face, cowboy shot angle, looking at viewer, lip bite, thigh gap, hard nipples, small breasts, shaved undercut, redhead, beautiful face, beautiful lighting, blue eyes, the most beautiful in the world,full length frame, High detail RAW color art, diffused soft lighting, shallow depth of field, sharp focus, hyperrealism, cinematic lighting,smiling, ((neons, skin)), bend over forward agains wall",
-      "text_l": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), nsfw, naked, nipples, 18 yo girl, beautiful big sharp eyes, bright silver eyes, eyelashes, sensual lips, light freckles, very short blonde hair, highly detailed skin texture, fashion icon, simple 1color background, studio lighting, fill light, intense shadow, film grain, best shot, face focus, symmetric face, cowboy shot angle, looking at viewer, lip bite, thigh gap, hard nipples, small breasts, shaved undercut, redhead, beautiful face, beautiful lighting, blue eyes, the most beautiful in the world,full length frame, High detail RAW color art, diffused soft lighting, shallow depth of field, sharp focus, hyperrealism, cinematic lighting,smiling, ((neons, skin)), bend over forward agains wall",
+      "text_g": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), an astronaut riding a horse on the moon",
+      "text_l": "(masterpiece), (extremely intricate:1.3), (realistic), (photorealistic:1.4), an astronaut riding a horse on the moon",
       "clip": [
         "25",
         1
@@ -30,12 +30,12 @@ const highresfix =
         "68",
         0
       ],
-      "steps": 40,
-      "cfg": 5,
+      "steps": 30,
+      "cfg": 7.5,
       "sampler_name": "dpmpp_2m_sde_gpu",
       "scheduler": "karras",
       "start_at_step": 0,
-      "end_at_step": 40,
+      "end_at_step": 30,
       "return_with_leftover_noise": "disable",
       "model": [
         "25",
@@ -50,7 +50,7 @@ const highresfix =
         0
       ],
       "latent_image": [
-        "51",
+        "8",
         0
       ]
     },
@@ -111,10 +111,10 @@ const highresfix =
   },
   "37": {
     "inputs": {
-      "switch": "On",
+      "switch": "Off",
       "lora_name": "topless v1a_fro0.95.safetensors",
-      "strength_model": 0.5,
-      "strength_clip": 0.5,
+      "strength_model": 1,
+      "strength_clip": 1,
       "model": [
         "1",
         0
@@ -133,13 +133,6 @@ const highresfix =
       "upscale_factor": 1
     },
     "class_type": "CR Image Size"
-  },
-  "45": {
-    "inputs": {
-      "image": "discord/sdxl_0036.png [output]",
-      "choose file to upload": "image"
-    },
-    "class_type": "LoadImage"
   },
   "46": {
     "inputs": {
@@ -199,7 +192,7 @@ const highresfix =
         0
       ],
       "image": [
-        "45",
+        "89",
         0
       ]
     },
@@ -268,7 +261,7 @@ const highresfix =
       ],
       "crop": "disabled",
       "image": [
-        "45",
+        "94",
         0
       ]
     },
@@ -289,9 +282,40 @@ const highresfix =
   },
   "84": {
     "inputs": {
-      "seed": 73495631395443
+      "seed": 1079942137815944
     },
     "class_type": "Seed (Legacy)"
+  },
+  "86": {
+    "inputs": {
+      "gap": 0,
+      "max_columns": 2,
+      "images": [
+        "28",
+        0
+      ]
+    },
+    "class_type": "ImagesGridByColumns"
+  },
+  "89": {
+    "inputs": {
+      "url": "http://127.0.0.1:8188/view?filename=sdxl_1071.png&subfolder=discord&type=output",
+      "keep_alpha_channel": false
+    },
+    "class_type": "LoadImageFromUrl"
+  },
+  "94": {
+    "inputs": {
+      "top": 0,
+      "left": 0,
+      "right": 1024,
+      "bottom": 1024,
+      "image": [
+        "89",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location"
   }
 };
   export default highresfix;  

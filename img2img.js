@@ -30,12 +30,12 @@
         "68",
         0
       ],
-      "steps": 40,
-      "cfg": 7.5,
+      "steps": 30,
+      "cfg": 5,
       "sampler_name": "dpmpp_2m_sde_gpu",
       "scheduler": "karras",
       "start_at_step": 0,
-      "end_at_step": 40,
+      "end_at_step": 30,
       "return_with_leftover_noise": "disable",
       "model": [
         "25",
@@ -83,7 +83,7 @@
   "25": {
     "inputs": {
       "lora_name": "sd_xl_offset_example-lora_1.0.safetensors",
-      "strength_model": 0.5,
+      "strength_model": 0.75,
       "strength_clip": 1,
       "model": [
         "37",
@@ -113,8 +113,8 @@
     "inputs": {
       "switch": "On",
       "lora_name": "topless v1a_fro0.95.safetensors",
-      "strength_model": 0.5,
-      "strength_clip": 0.5,
+      "strength_model": 1,
+      "strength_clip": 1,
       "model": [
         "1",
         0
@@ -133,13 +133,6 @@
       "upscale_factor": 1
     },
     "class_type": "CR Image Size"
-  },
-  "45": {
-    "inputs": {
-      "image": "discord/sdxl_0935.png [output]",
-      "choose file to upload": "image"
-    },
-    "class_type": "LoadImage"
   },
   "46": {
     "inputs": {
@@ -199,7 +192,7 @@
         0
       ],
       "image": [
-        "45",
+        "89",
         0
       ]
     },
@@ -268,7 +261,7 @@
       ],
       "crop": "disabled",
       "image": [
-        "45",
+        "89",
         0
       ]
     },
@@ -289,7 +282,7 @@
   },
   "84": {
     "inputs": {
-      "seed": 965471185346926
+      "seed": 1041794944038322
     },
     "class_type": "Seed (Legacy)"
   },
@@ -303,6 +296,13 @@
       ]
     },
     "class_type": "ImagesGridByColumns"
+  },
+  "89": {
+    "inputs": {
+      "url": "",
+      "keep_alpha_channel": false
+    },
+    "class_type": "LoadImageFromUrl"
   }
 };  
         export default img2img;

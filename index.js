@@ -21,6 +21,7 @@ import sharp from 'sharp';
 import txt2img from './txt2img.js';
 import img2img from './img2img.js';
 import highresfix from './highresfix.js';
+import variations from './variations.js';
 
 import aspectratios from './aspectratios.js';
 import {
@@ -36,16 +37,37 @@ import {
 }
 from 'discord.js';
 
-const server_address = "127.0.0.1:8188";
+const servers = [
+  {address: '127.0.0.1:8188', isBusy: false},
+  {address: 'xx.xx.xx.xx:xxxx', isBusy: false}  //doto move this to a file, and dynamically reload 
+];
+
+
+let currentServerIndex = 0;
+
+const getNextAvailableServer = () => {
+    const startServerIndex = currentServerIndex;
+
+    do{
+        const server = servers[currentServerIndex];
+        currentServerIndex = (currentServerIndex + 1) % servers.length;
+
+        if(!server.isBusy)return server;
+        
+    
+    } while (currentServerIndex !== startServerIndex);
+
+    return null;
+
+};
 const client_id = uuidv4();
 
 const imageGenerationQueue = [];
-let isProcessing = false;
 
 const processNextInQueue = async () => {
-    if (isProcessing || imageGenerationQueue.length === 0) return;
+    if (imageGenerationQueue.length === 0) return;
 
-    isProcessing = true;
+    
     const nextItem = imageGenerationQueue.shift();
 
     try {
@@ -54,8 +76,7 @@ const processNextInQueue = async () => {
         console.error('Error processing image generation:', error);
     }
 
-    isProcessing = false;
-    processNextInQueue();
+
 };
 
 
@@ -121,7 +142,22 @@ const queueImageGeneration = (mode, prompt, seed, width, height, interaction, qu
 };
 
 const generateImage = async (mode, prompt, seed, width, height, interaction, question, db) => {
-   
+     const server = getNextAvailableServer();
+     if (!server){
+        imageGenerationQueue.push({
+            mode,
+            prompt,
+            seed,
+            width,
+            height,
+            interaction,
+            question,
+            db
+        });
+        return;
+     }
+
+     server.isBusy =true; 
     const xlprompt = mode;
    // console.log(mode);
     xlprompt["2"]["inputs"]["text_g"] = prompt;
@@ -130,13 +166,30 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
     xlprompt["41"]["inputs"]["width"] = width;
     xlprompt["41"]["inputs"]["height"] = height;
 
-
-    const ws = new WebSocket(`ws://${server_address}/ws?clientId=${client_id}`);
+    try{
+    const ws = new WebSocket(`ws://${server.address}/ws?clientId=${client_id}`);
 
     return new Promise((resolve, reject) => {
+        try {
+            ws.on('error', (error) => {
+                console.log("Server is down:" + error);
+                imageGenerationQueue.push({
+                    mode,
+                    prompt,
+                    seed,
+                    width,
+                    height,
+                    interaction,
+                    question,
+                    db
+                });
+                return;
+
+            });
         ws.on('open', async () => {
-            try {
-                const imagesData = await getImages(ws, xlprompt, interaction);
+          
+                const imagesData = await getImages(ws, xlprompt, interaction,server);
+                server.isBusy =false;  
                 const images = imagesData['58'];
                 const buffers = images.map(image => image.data);
                 const filenames = images.map(image => image.filename);
@@ -239,24 +292,50 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                         width: width,
                         height: height,
                     });
+                    if (imageGenerationQueue.length > 0){
+                        const nextItem = imageGenerationQueue.shift();
+                        await generateImage(nextItem.mode, nextItem.prompt, nextItem.seed, nextItem.width, nextItem.height, nextItem.interaction, nextItem.question, nextItem.db);
+
+
+                    }
+
+
+
                 resolve(buffers);
-            } catch (error) {
-                reject(error);
-            }
+            
         });
+    } catch (error) {
+
+       console.log(error);
+
+
+        reject(error);
+    }
     });
+} catch (error) {
+
+    console.log(error);
+
+
+     reject(error);
+ }
 };
 
-const queuePrompt = async (prompt) => {
-    const response = await axios.post(`http://${server_address}/prompt`, {
+const queuePrompt = async (prompt,server) => {
+    try{
+    const response = await axios.post(`http://${server.address}/prompt`, {
         prompt,
         client_id
     });
     return response.data;
+ } catch (error) {
+    console.log(error);
+}
 };
 
-const getImage = async (filename, subfolder, folder_type) => {
-    const response = await axios.get(`http://${server_address}/view`, {
+const getImage = async (filename, subfolder, folder_type,server) => {
+    try{
+    const response = await axios.get(`http://${server.address}/view`, {
         params: {
             filename,
             subfolder,
@@ -265,18 +344,25 @@ const getImage = async (filename, subfolder, folder_type) => {
         responseType: 'arraybuffer'
     });
     return response.data;
+} catch (error) {
+    console.log(error);
+}
 };
 
-const getHistory = async (prompt_id) => {
-    const response = await axios.get(`http://${server_address}/history/${prompt_id}`);
+const getHistory = async (prompt_id,server) => {
+    try{
+    const response = await axios.get(`http://${server.address}/history/${prompt_id}`);
     return response.data;
+} catch (error) {
+    console.log(error);
+}
 };
 
-const getImages = async (ws, prompt, interaction) => {
+const getImages = async (ws, prompt, interaction,server) => {
     let progress = 0;
     const {
         prompt_id
-    } = await queuePrompt(prompt);
+    } = await queuePrompt(prompt,server);
     let output_images = {};
 
     return new Promise((resolve) => {
@@ -290,6 +376,7 @@ const getImages = async (ws, prompt, interaction) => {
                 console.warn('Unexpected WebSocket message format:', data);
                 return;
             }
+            console.log(message);
            if (message.type === 'progress') {
                 if (message.data.max === 40) {
                     progress = 10 + message.data.value * 2;
@@ -307,17 +394,19 @@ const getImages = async (ws, prompt, interaction) => {
                     `${progress}% ${progressBar} <@${interaction.user.id}>`
                 );
             }
-            if (message.type === 'executed') {
+            if (message.type === 'executed' && message.data.node == "58") {
+             //   console.log("got to the end");
                 const msgData = message.data;
                 if (msgData.node && msgData.prompt_id === prompt_id) {
-                    const history = await getHistory(prompt_id);
+                    const history = await getHistory(prompt_id,server);
+                   // console.log(history);
                     const outputs = history[prompt_id].outputs;
                     for (let node_id in outputs) {
                         const node_output = outputs[node_id];
                         if ('images' in node_output) {
                             let images_output = [];
                             for (let image of node_output.images) {
-                                const image_data = await getImage(image.filename, image.subfolder, image.type);
+                                const image_data = await getImage(image.filename, image.subfolder, image.type,server);
                                 images_output.push({
                                     data: image_data,
                                     filename: image.filename
@@ -622,28 +711,62 @@ async function main() {
                     const question = doc.data().question;
                     const width = doc.data().width;
                     const height = doc.data().height;
-                    console.log(prompt);
+                    //console.log(prompt);
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
-                    const prompt_text = img2img;
+                  //  const prompt_text = variations;
  // extract the image and save it first
+                  //  console.log(interaction.message);
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
-                    var buffer = {};
-                    buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
+                   
+                    const link  = attachmentsArray[0].attachment;
                     if(parseInt(buttonInfo[0]) < 4){
-                      buffer = await extractQuadrant(buffer, parseInt(buttonInfo[0]));
-                    }
+                        
 
-                    const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
-                    fs.writeFile(filePath, buffer, (err) => {
-                        if (err) {
-                            console.error('Error saving the image:', err);
-                           
-                        } 
-                    });
 
-                    prompt_text["45"]["inputs"]["image"] = filePath;
-                    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+   
+    let top, left, right, bottom;
 
+    switch ( parseInt(buttonInfo[0])) {
+        case 0:
+            top = 0;
+            left =0;
+            right = width;
+            bottom = height;
+            break;
+        case 1:
+            top = 0;
+            left =width;
+            right =width * 2;
+            bottom = height;
+            break;
+        case 2:
+            top = height;
+            left = 0;
+            right = width;
+            bottom =  height * 2;
+            break;
+        case 3:
+            top = height;
+            left =  width;
+            right = width * 2;
+            bottom =   height * 2;
+            break;
+           
+    }
+   
+    const prompt_text = variations;
+    prompt_text["94"]["inputs"]["top"] = top;
+    prompt_text["94"]["inputs"]["left"] = left;
+    prompt_text["94"]["inputs"]["right"] = right;
+    prompt_text["94"]["inputs"]["bottom"] = bottom;
+    prompt_text["89"]["inputs"]["url"] = link;
+    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+} else {
+  
+    const prompt_text = img2img;
+    prompt_text["89"]["inputs"]["url"] = link;
+    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+}
                 } else if (buttonInfo[1].startsWith("C")) {
 
                     const doc = await db.collection('prompt-history').doc(buttonInfo[0]).get();
@@ -670,22 +793,16 @@ async function main() {
                     const width = doc.data().width;
                     const height = doc.data().height;
 
-                    console.log(prompt);
+                    //console.log(prompt);
 
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
                     const prompt_text = highresfix;
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
-                    var buffer = {};
-                    buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
-                    const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
-                    fs.writeFile(filePath, buffer, (err) => {
-                        if (err) {
-                            console.error('Error saving the image:', err);
-                           
-                        } 
-                    });
+                  
+                    const link  = attachmentsArray[0].attachment;
+                   
 
-                    prompt_text["45"]["inputs"]["image"] = filePath;
+                    prompt_text["89"]["inputs"]["url"] = link;
                     queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
 
                 } else {
@@ -839,23 +956,26 @@ async function main() {
                     if (content.text.includes('![IMAGE][')) {
                         const regex = /!\[IMAGE\]\[(.*?(?=\]|\>>|\)))]/;
                         //(beautiful photo, masterpiece),' + 
-                        prompt = '(masterpiece,best quality, ultra realistic,32k,RAW photo,detailed skin, 8k uhd, high quality:1.2),' + content.text.match(regex)[1];
+                        prompt = '(masterpiece, 8k uhd, high quality:1.2),' + content.text.match(regex)[1];
                     } else {
                         prompt = question;
                     }
-                    console.log(prompt);
+                  //  console.log(prompt);
 
                     if (image2image) {
-                        // We assume 'link' is already defined as you mentioned in the comments
-                        downloadImage(link, (savedImagePath) => {
-                            if (savedImagePath) {
-                                const prompt_text = img2img;
-                                prompt_text["45"]["inputs"]["image"] = savedImagePath;
+
+                        const prompt_text = img2img;
+                        prompt_text["89"]["inputs"]["url"] = link;
+                        // // We assume 'link' is already defined as you mentioned in the comments
+                        // downloadImage(link, (savedImagePath) => {
+                        //     if (savedImagePath) {
+                        //         const prompt_text = img2img;
+                        //         prompt_text["45"]["inputs"]["image"] = savedImagePath;
                                 queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
-                            } else {
-                                console.error('Failed to download and save the image.');
-                            }
-                        });
+                        //     } else {
+                        //         console.error('Failed to download and save the image.');
+                        //     }
+                        // });
                     } else {
 
                         queueImageGeneration(txt2img, prompt, seed, width, height, interaction, question, db);
