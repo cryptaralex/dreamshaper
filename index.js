@@ -37,10 +37,55 @@ import {
 }
 from 'discord.js';
 
-const servers = [
-  {address: '127.0.0.1:8188', isBusy: false},
-  {address: 'xx.xx.xx.xx:xxxx', isBusy: false}  //doto move this to a file, and dynamically reload 
-];
+import {OpenAI} from 'node-openai';
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
+
+
+let servers = [];
+let debounceTimeout;
+const DEBOUNCE_TIME = 1000;
+
+const getServersFromFile = () => {
+     try {
+        const data = fs.readFileSync('./servers.json','utf8');
+        const newServers = JSON.parse(data);
+        return newServers;
+
+     } catch (error) {
+        console.log("Error reading servers.json", error);
+        return [];
+     }
+
+};
+
+fs.watch('./servers.json', (eventType, filename) => {
+    if(eventType === 'change'){
+        if(debounceTimeout) clearTimeout(debounceTimeout);
+
+        debounceTimeout = setTimeout( () => {
+            const newServers = getServersFromFile();
+            const currentServerMap = new Map();
+            servers.forEach(server => currentServerMap.set(server.address, server));
+            servers = newServers.map(newServer => {
+                const existingServer = currentServerMap.get(newServer.address);
+                if (existingServer){
+                    return existingServer;
+                }
+                return newServer;
+            });
+           
+            console.log('servers.json was modified. Reloading servers...');
+            
+        }
+        , DEBOUNCE_TIME);
+    }
+
+});
+
+servers = getServersFromFile();
+
 
 
 let currentServerIndex = 0;
@@ -71,21 +116,13 @@ const processNextInQueue = async () => {
     const nextItem = imageGenerationQueue.shift();
 
     try {
-        await generateImage(nextItem.mode, nextItem.prompt, nextItem.seed, nextItem.width, nextItem.height, nextItem.interaction, nextItem.question, nextItem.db);
+        await generateImage(nextItem.mode, nextItem.prompt, nextItem.link, nextItem.trim, nextItem.seed, nextItem.width, nextItem.height, nextItem.interaction, nextItem.question, nextItem.db);
     } catch (error) {
         console.error('Error processing image generation:', error);
     }
 
 
 };
-
-
-/**
- * Extracts a quadrant from an image buffer.
- * @param {Buffer} imageBuffer - The source image buffer.
- * @param {number} quadrant - The quadrant to extract (0-3).
- * @return {Promise<Buffer>} - A promise that resolves with the quadrant image buffer.
- */
 
 const extractQuadrant = async (imageBuffer, quadrant) => {
     const image = sharp(imageBuffer);
@@ -127,10 +164,22 @@ const extractQuadrant = async (imageBuffer, quadrant) => {
         .toBuffer();
 }
 
-const queueImageGeneration = (mode, prompt, seed, width, height, interaction, question, db) => {
+const queueImageGeneration = (mode, prompt,link,trim, seed, width, height, interaction, question, db) => {
+
+    const Queuelength = imageGenerationQueue.filter(task => task.interaction.user.id === interaction.user.id).length;
+   if (Queuelength > 5){
+
+    interaction.editReply(
+        `**${interaction.user.tag}:**❌\n\`\`\`\nQUEUE FULL\n\`\`\`\n`
+    );
+    return;
+
+   }
     imageGenerationQueue.push({
         mode,
         prompt,
+        link,
+        trim,
         seed,
         width,
         height,
@@ -141,12 +190,14 @@ const queueImageGeneration = (mode, prompt, seed, width, height, interaction, qu
     processNextInQueue();
 };
 
-const generateImage = async (mode, prompt, seed, width, height, interaction, question, db) => {
+const generateImage = async (mode, prompt,link, trim, seed, width, height, interaction, question, db) => {
      const server = getNextAvailableServer();
      if (!server){
         imageGenerationQueue.push({
             mode,
             prompt,
+            link,
+            trim,
             seed,
             width,
             height,
@@ -158,13 +209,27 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
      }
 
      server.isBusy =true; 
-    const xlprompt = mode;
+     const xlprompt = mode;
+     const SFWCheck = process.env.SFW_CHANNEL.includes(interaction.channel.id);
+            if(SFWCheck){
+                xlprompt["37"]["inputs"]["switch"] = 'Off';
+            }
+    
    // console.log(mode);
     xlprompt["2"]["inputs"]["text_g"] = prompt;
     xlprompt["2"]["inputs"]["text_l"] = prompt;
     xlprompt["84"]["inputs"]["seed"] = seed;
     xlprompt["41"]["inputs"]["width"] = width;
     xlprompt["41"]["inputs"]["height"] = height;
+    xlprompt["89"]["inputs"]["url"] = link;
+
+    if(xlprompt["58"]["inputs"]["filename_prefix"]== "sdxl_var"){
+        xlprompt["94"]["inputs"]["top"] = trim.top;
+        xlprompt["94"]["inputs"]["left"] = trim.left;
+        xlprompt["94"]["inputs"]["right"] = trim.right;
+        xlprompt["94"]["inputs"]["bottom"] = trim.bottom;
+    }
+
 
     try{
     const ws = new WebSocket(`ws://${server.address}/ws?clientId=${client_id}`);
@@ -176,6 +241,8 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                 imageGenerationQueue.push({
                     mode,
                     prompt,
+                    link,
+                    trim,
                     seed,
                     width,
                     height,
@@ -200,14 +267,6 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                             `4#V4#${filenames[0]}#SDXL#${interaction.id}`
                            
                         ),
-                       // createButtonComponent(
-                        //    "🪄 Hires Fix",
-                      //      `${interaction.id}#H1#SDXL#${filenames[0]}`
-                     //   ),
-                       // createButtonComponent(
-                      //      "📷",
-                       //     `${interaction.id}#C1#SDXL#${filenames[0]}`
-                       // )
                     ]);
 
                     await interaction.editReply({
@@ -261,10 +320,7 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                             "V4",
                             `3#V4#${filenames[0]}#SDXL#${interaction.id}`
                         ),
-                       // createButtonComponent(
-                        //    "📷",
-                        //    `${interaction.id}#C1#SDXL`
-                       // )
+                      
                     ]);
 
                     await interaction.editReply({
@@ -294,7 +350,7 @@ const generateImage = async (mode, prompt, seed, width, height, interaction, que
                     });
                     if (imageGenerationQueue.length > 0){
                         const nextItem = imageGenerationQueue.shift();
-                        await generateImage(nextItem.mode, nextItem.prompt, nextItem.seed, nextItem.width, nextItem.height, nextItem.interaction, nextItem.question, nextItem.db);
+                        await generateImage(nextItem.mode, nextItem.prompt, nextItem.link,nextItem.trim, nextItem.seed, nextItem.width, nextItem.height, nextItem.interaction, nextItem.question, nextItem.db);
 
 
                     }
@@ -376,7 +432,7 @@ const getImages = async (ws, prompt, interaction,server) => {
                 console.warn('Unexpected WebSocket message format:', data);
                 return;
             }
-            console.log(message);
+           // console.log(message);
            if (message.type === 'progress') {
                 if (message.data.max === 40) {
                     progress = 10 + message.data.value * 2;
@@ -507,27 +563,6 @@ async function initDiscordCommands() {
     }
 }
 
-function downloadImage(link, callback) {
-    https.get(link, (response) => {
-        const chunks = [];
-        response.on('data', (chunk) => chunks.push(chunk));
-        response.on('end', () => {
-            const buffer = Buffer.concat(chunks);
-            const filePath = process.env.IMAGE_PATH + `${Date.now()}.png`; // Adjust the path and extension as needed
-            fs.writeFile(filePath, buffer, (err) => {
-                if (err) {
-                    console.error('Error saving the image:', err);
-                    callback(null);
-                } else {
-                    callback(filePath);
-                }
-            });
-        });
-    }).on('error', (err) => {
-        console.error('Error downloading the image:', err);
-        callback(null);
-    });
-}
 
 async function initFirebaseAdmin() {
     admin.initializeApp({
@@ -597,7 +632,8 @@ async function main() {
         console.error(error);
         process.exit();
     });
-
+    
+  
     await initDiscordCommands().catch(e => {
         console.log(e)
     });
@@ -644,14 +680,9 @@ async function main() {
                 const buttonInfo = customId.split("#");
 
                 if (buttonInfo[1].startsWith("U")) {
-                    const doc = await db.collection('prompt-history').doc(buttonInfo[4]).get();
-                    const prompt = doc.data().prompt; // response.text = response.text.replace(regex,"");
-                    const question = doc.data().question;
-                    const width = doc.data().width;
-                    const height = doc.data().height;
-                    const seed = doc.data().seed;
+                    
                     await interaction.reply(`Upscaling...🤔`);
-                    const index = buttonInfo[0];
+                    
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
                     const buffer = await loadImageToBuffer(attachmentsArray[0].attachment);
                     const extracted = await extractQuadrant(buffer, parseInt(buttonInfo[0]));
@@ -659,42 +690,26 @@ async function main() {
                     const row1 = new ActionRowBuilder().addComponents([
                         createButtonComponent(
                             "🪄 Variations",
-                            `4#V4#${buttonInfo[2]}#SDXL#${interaction.id}`
+                            `4#V4#${buttonInfo[2]}#SDXL#${buttonInfo[4]}`
                         ),
                         createButtonComponent(
                             "🪄 Hires Fix",
-                            `${interaction.id}#H1#SDXL#${buttonInfo[2]}`
+                            `${buttonInfo[4]}#H1#SDXL#${buttonInfo[2]}`
                         ),
-                   //     createButtonComponent(
-                   //         "📷",
-                  //          `${interaction.id}#C1#SDXL#${buttonInfo[2]}`
-                   //     )
-
+                
                     ]);
 
                     await interaction.editReply({
                         content: `${interaction.message.content} (Upscaled) <@${interaction.user.id}>\n`,
                         files: [{
                             attachment: extracted,
-                            name: buttonInfo[2],
+                            name: 'upscaled_' + buttonInfo[0] + '_' + buttonInfo[2],
                             contentType: 'image/png',
                         }],
                         components: [row1]
                     });
 
-                    await db
-                        .collection("prompt-history")
-                        .doc(interaction.id)
-                        .set({
-                            timeStamp: new Date(),
-                            prompt: prompt,
-                            question: question,
-                            width: width,
-                            height: height,
-                            seed: seed,
-                            user: interaction.user.tag,
-
-                        });
+                 
                 } else if (buttonInfo[1].startsWith("V")) {
                     let progress = 0;
                     const progressBar =
@@ -711,11 +726,8 @@ async function main() {
                     const question = doc.data().question;
                     const width = doc.data().width;
                     const height = doc.data().height;
-                    //console.log(prompt);
+            
                     const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
-                  //  const prompt_text = variations;
- // extract the image and save it first
-                  //  console.log(interaction.message);
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
                    
                     const link  = attachmentsArray[0].attachment;
@@ -724,48 +736,45 @@ async function main() {
 
 
    
-    let top, left, right, bottom;
+    let trim = {};
+    // top, left, right, bottom;
 
     switch ( parseInt(buttonInfo[0])) {
         case 0:
-            top = 0;
-            left =0;
-            right = width;
-            bottom = height;
+            trim.top = 0;
+            trim.left =0;
+            trim.right = width;
+            trim.bottom = height;
             break;
         case 1:
-            top = 0;
-            left =width;
-            right =width * 2;
-            bottom = height;
+            trim.top = 0;
+            trim.left =width;
+            trim.right =width * 2;
+            trim.bottom = height;
             break;
         case 2:
-            top = height;
-            left = 0;
-            right = width;
-            bottom =  height * 2;
+            trim.top = height;
+            trim.left = 0;
+            trim.right = width;
+            trim.bottom =  height * 2;
             break;
         case 3:
-            top = height;
-            left =  width;
-            right = width * 2;
-            bottom =   height * 2;
+            trim.top = height;
+            trim.left =  width;
+            trim.right = width * 2;
+            trim.bottom =   height * 2;
             break;
            
     }
    
     const prompt_text = variations;
-    prompt_text["94"]["inputs"]["top"] = top;
-    prompt_text["94"]["inputs"]["left"] = left;
-    prompt_text["94"]["inputs"]["right"] = right;
-    prompt_text["94"]["inputs"]["bottom"] = bottom;
-    prompt_text["89"]["inputs"]["url"] = link;
-    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+
+    queueImageGeneration(prompt_text, prompt, link, trim, seed, width, height, interaction, question, db);
 } else {
   
     const prompt_text = img2img;
-    prompt_text["89"]["inputs"]["url"] = link;
-    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+   
+    queueImageGeneration(prompt_text, prompt, link,0, seed, width, height, interaction, question, db);
 }
                 } else if (buttonInfo[1].startsWith("C")) {
 
@@ -788,22 +797,16 @@ async function main() {
                     );
 
                     const doc = await db.collection('prompt-history').doc(buttonInfo[0]).get();
-                    const prompt = doc.data().prompt; // response.text = response.text.replace(regex,"");
+                    const prompt = doc.data().prompt;
                     const question = doc.data().question;
                     const width = doc.data().width;
                     const height = doc.data().height;
-
-                    //console.log(prompt);
-
-                    const seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
+                    const seed = (Math.random() * 2 ** 32 >>> 0); 
                     const prompt_text = highresfix;
                     const attachmentsArray = Array.from(interaction.message.attachments.values());
-                  
                     const link  = attachmentsArray[0].attachment;
-                   
 
-                    prompt_text["89"]["inputs"]["url"] = link;
-                    queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
+                    queueImageGeneration(prompt_text, prompt, link, 0,seed, width, height, interaction, question, db);
 
                 } else {
                     dream_Interaction_Handler(interaction);
@@ -839,7 +842,7 @@ async function main() {
     async function dream_Interaction_Handler(interaction) {
 
         let question, height, width;
-        let seed = (Math.random() * 2 ** 32 >>> 0); //.toString();
+        let seed = (Math.random() * 2 ** 32 >>> 0); 
         if (interaction.options) {
             question = interaction.options.getString("idea") ?? "random cool image";
 
@@ -904,6 +907,39 @@ async function main() {
             var content = {};
             let image2image = false;
             let link;
+            // moderation for SFW here
+            const SFWCheck = process.env.SFW_CHANNEL.includes(interaction.channel.id);
+            if(SFWCheck){
+            console.log('moderation check');
+            const moderationapi = openai.v1();
+
+            const moderation = await moderationapi.moderations.create({
+                model: 'text-moderation-stable',
+                input: question,
+            
+            });
+           
+            if (moderation && moderation.results && moderation.results[0].flagged === true){
+                await interaction.editReply(
+                    `**${interaction.user.tag}:** ${question}\n**${client.user.username}:** ❌\n\`\`\`\nContent Moderation Triggered.\n\`\`\`\n`
+                );
+                return;
+            }
+
+        }
+
+
+            if(question.length > 1000){
+
+               
+                    await interaction.editReply(
+                        `**${interaction.user.tag}:** ${question}\n**${client.user.username}:** ❌\n\`\`\`\nPROMPT TOO LONG\n\`\`\`\n`
+                    );
+    
+                    client.user.setActivity(activity);
+                    return;
+                }
+            
 
             if (question.startsWith('https://')) {
                 let linkEndIndex = question.indexOf(' ');
@@ -963,22 +999,12 @@ async function main() {
                   //  console.log(prompt);
 
                     if (image2image) {
-
                         const prompt_text = img2img;
-                        prompt_text["89"]["inputs"]["url"] = link;
-                        // // We assume 'link' is already defined as you mentioned in the comments
-                        // downloadImage(link, (savedImagePath) => {
-                        //     if (savedImagePath) {
-                        //         const prompt_text = img2img;
-                        //         prompt_text["45"]["inputs"]["image"] = savedImagePath;
-                                queueImageGeneration(prompt_text, prompt, seed, width, height, interaction, question, db);
-                        //     } else {
-                        //         console.error('Failed to download and save the image.');
-                        //     }
-                        // });
-                    } else {
+                        queueImageGeneration(prompt_text, prompt, link, 0,seed, width, height, interaction, question, db);
 
-                        queueImageGeneration(txt2img, prompt, seed, width, height, interaction, question, db);
+                    } else {
+                        link = "";
+                        queueImageGeneration(txt2img, prompt, link, 0, seed, width, height, interaction, question, db);
                     }
 
                 } catch (error) {

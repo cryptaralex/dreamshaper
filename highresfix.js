@@ -111,10 +111,10 @@ const highresfix =
   },
   "37": {
     "inputs": {
-      "switch": "Off",
-      "lora_name": "topless v1a_fro0.95.safetensors",
-      "strength_model": 1,
-      "strength_clip": 1,
+      "switch": "On",
+      "lora_name": "nudify_xl.safetensors",
+      "strength_model": 0.5,
+      "strength_clip": 0.5,
       "model": [
         "1",
         0

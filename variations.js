@@ -111,10 +111,10 @@ const variations =
     },
     "37": {
       "inputs": {
-        "switch": "Off",
-        "lora_name": "topless v1a_fro0.95.safetensors",
-        "strength_model": 1,
-        "strength_clip": 1,
+        "switch": "On",
+        "lora_name": "nudify_xl.safetensors",
+        "strength_model": 0.75,
+        "strength_clip": 0.75,
         "model": [
           "1",
           0
@@ -160,7 +160,7 @@ const variations =
     "58": {
       "inputs": {
         "output_path": "discord",
-        "filename_prefix": "sdxl",
+        "filename_prefix": "sdxl_var",
         "filename_delimiter": "_",
         "filename_number_padding": 4,
         "filename_number_start": "false",

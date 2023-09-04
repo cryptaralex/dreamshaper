@@ -112,9 +112,9 @@
   "37": {
     "inputs": {
       "switch": "On",
-      "lora_name": "topless v1a_fro0.95.safetensors",
-      "strength_model": 1,
-      "strength_clip": 1,
+      "lora_name": "nudify_xl.safetensors",
+      "strength_model": 0.75,
+      "strength_clip": 0.75,
       "model": [
         "1",
         0
