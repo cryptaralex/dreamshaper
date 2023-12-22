@@ -214,6 +214,10 @@ const generateImage = async (mode, prompt,link, trim, seed, width, height, inter
             if(SFWCheck){
                 xlprompt["37"]["inputs"]["switch"] = 'Off';
             }
+     const PXLCheck =  process.env.PXL_CHANNEL.includes(interaction.channel.id);
+             if(PXLCheck){
+                xlprompt["25"]["inputs"]["lora_name"] = "pixel-art-xl-v1.1.safetensors";
+             }
     
    // console.log(mode);
     xlprompt["2"]["inputs"]["text_g"] = prompt;
@@ -235,8 +239,15 @@ const generateImage = async (mode, prompt,link, trim, seed, width, height, inter
     const ws = new WebSocket(`ws://${server.address}/ws?clientId=${client_id}`);
 
     return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            ws.terminate(); // Terminate the WebSocket connection
+            server.isBusy = false; // Reset the server's busy status
+            reject(new Error('Image generation timed out'));
+        }, 60000); // Set the timeout duration (e.g., 60 seconds)
+
         try {
             ws.on('error', (error) => {
+                clearTimeout(timeout);
                 console.log("Server is down:" + error);
                 imageGenerationQueue.push({
                     mode,
@@ -256,6 +267,7 @@ const generateImage = async (mode, prompt,link, trim, seed, width, height, inter
         ws.on('open', async () => {
           
                 const imagesData = await getImages(ws, xlprompt, interaction,server);
+                clearTimeout(timeout);
                 server.isBusy =false;  
                 const images = imagesData['58'];
                 const buffers = images.map(image => image.data);
@@ -914,11 +926,11 @@ async function main() {
             const moderationapi = openai.v1();
 
             const moderation = await moderationapi.moderations.create({
-                model: 'text-moderation-stable',
+                model: 'text-moderation-latest',
                 input: question,
             
             });
-           
+           console.log(moderation.results);
             if (moderation && moderation.results && moderation.results[0].flagged === true){
                 await interaction.editReply(
                     `**${interaction.user.tag}:** ${question}\n**${client.user.username}:** ❌\n\`\`\`\nContent Moderation Triggered.\n\`\`\`\n`
@@ -1030,12 +1042,12 @@ async function ping_Interaction_Handler(interaction) {
         fetchReply: true
     });
     await interaction.editReply(`Websocket Heartbeat: ${interaction.client.ws.ping} ms. \nRoundtrip Latency: ${sent.createdTimestamp - interaction.createdTimestamp} ms\n`);
-    client.user.setActivity(activity);
+   // client.user.setActivity(activity);
 }
 
 async function help_Interaction_Handler(interaction) {
-    await interaction.reply("**Singularity AI**\nA Discord AI Bot Powered by Bitcoin Ordinals!\n\n**Usage:**\nDM - Tag or metion\n`/reset-chat` - Start A Fresh Chat Session\n`/ping` - Check Websocket Heartbeat && Roundtrip Latency\n\nSupport Server: https://discord.gg/btcai");
-    client.user.setActivity(activity);
+    await interaction.reply("**Dreamcrafter AI**\nAn open source Stable Diffusion discord bot \n\n**Usage:**\n`/dream` - Generate an Image\n`/ping` - Check Websocket Heartbeat && Roundtrip Latency\n\nSupport Server: https://discord.gg/uNmrye7AGA");
+ //   client.user.setActivity(activity);
 }
 
 // Discord Rate Limit Check
